@@ -16,17 +16,5 @@
     "price": "1234",
     "thumbnail": "desde pug",
     "id": 3
-  },
-  {
-    "title": "producto HBS",
-    "price": "124",
-    "thumbnail": "HBS",
-    "id": 3
-  },
-  {
-    "title": "producto desde EJS",
-    "price": "1345",
-    "thumbnail": "EJS",
-    "id": 5
   }
 ]

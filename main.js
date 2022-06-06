@@ -1,14 +1,70 @@
 const express = require("express");
-const io = require("socket.io");
-const { Server: IOServer } = require("socket.io");
-const { Server: HttpServer } = require("http");
-const { engine } = require("express-handlebars");
+const fs = require("fs");
 const app = express();
+const http = require("http");
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
+const { engine } = require("express-handlebars");
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname + "/public"));
+
 // API
 const Contenedor = require("./class");
 const container = new Contenedor("api");
+
+// CHAT y Tabla
+const messages = [
+	{ email: "miguel@gmail.com", message: "Hola!" },
+	{ email: "maria@gmail.com", message: "Hola miguel!" },
+];
+async function save(msg) {
+	let cont;
+	try {
+		cont = await fs.promises.readFile(`./chat.txt`);
+		cont = JSON.parse(cont);
+	} catch (e) {
+		cont = [];
+	}
+	const last = cont[cont.length - 1];
+
+	let id = 1;
+
+	if (last) {
+		id = last.id + 1;
+	}
+	msg.id = id;
+	cont.push(msg);
+
+	return fs.promises.writeFile(`./chat.txt`, JSON.stringify(cont, null, 2));
+}
+
+const guardarProductos = async (item) => {
+	const items = await container.getAll();
+	const id = items.length;
+	item.id = id + 1;
+	await container.save(item);
+};
+
+io.on("connection", (socket) => {
+	console.log(`new user ${socket.id}`);
+	socket.on("chat message", (msg) => {
+		save(msg);
+		io.emit("chat message", msg);
+	});
+	socket.on("product submit", (item) => {
+		console.log(item);
+		guardarProductos(item);
+		io.emit("product submit", item);
+	});
+	socket.on("disconnect", () => {
+		console.log(`user ${socket.id} disconnected`);
+	});
+});
+
+// Tabla productos
 
 // HANDLEBARS
 app.engine(
@@ -24,11 +80,11 @@ app.set("views", "./viewsHBS");
 app.set("view engine", "hbs");
 
 // metodos
-app.get("/", (req, res) => {
-	const data = {
-		alumno: "Mauricio Crudo",
-	};
-	res.render("layouts/main", data);
+app.get("/", async (req, res) => {
+	let cont = await fs.promises.readFile(`./chat.txt`);
+	cont = JSON.parse(cont);
+	// console.log(data);
+	res.render("layouts/main", cont);
 });
 app.get("/productos", async (req, res) => {
 	const content = await container.getAll();
@@ -39,21 +95,18 @@ app.get("/productos", async (req, res) => {
 	console.log(data);
 	return res.render("layouts/items", data);
 });
-app.post("/productos", async (req, res) => {
-	const items = await container.getAll();
-	const id = items.length;
-	let newItem = req.body;
-	newItem.id = id;
-	await container.save(newItem);
-	return res.redirect("/productos");
-});
+// app.post("/productos", async (req, res) => {
+// 	const items = await container.getAll();
+// 	const id = items.length;
+// 	let newItem = req.body;
+// 	newItem.id = id;
+// 	await container.save(newItem);
+// 	return res.redirect("/productos");
+// });
 
 // PORT
-app.use(express.static(__dirname + "/public"));
+
 const PORT = 8080;
-const server = app.listen(PORT, () => {
-	console.log(`listen on ${PORT}`);
-});
-server.on("error", () => {
-	console.log(error);
+server.listen(PORT, () => {
+	console.log(`listen on port ${PORT}`);
 });

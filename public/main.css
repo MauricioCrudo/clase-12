@@ -13,3 +13,11 @@ footer {
 	display: flex;
 	justify-content: flex-end;
 }
+.chat-wrapper {
+	margin: 20px;
+	padding: 10px;
+	border: solid black;
+}
+.hidden {
+	display: none;
+}
